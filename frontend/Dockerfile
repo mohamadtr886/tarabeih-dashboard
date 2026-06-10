@@ -1,5 +1,7 @@
 FROM nginx:alpine
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+RUN apk add --no-cache gettext
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
+COPY docker-entrypoint.sh /docker-entrypoint.sh
 COPY index.html /usr/share/nginx/html/
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+RUN chmod +x /docker-entrypoint.sh
+CMD ["/docker-entrypoint.sh"]
