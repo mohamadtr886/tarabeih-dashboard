@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tarabeih Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #21253a;
+      --border: #2d3148;
+      --primary: #6366f1;
+      --primary-light: #818cf8;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --radius: 14px;
+    }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 240px;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 24px 0;
+      position: fixed;
+      top: 0; right: 0; bottom: 0;
+    }
+
+    .logo {
+      padding: 0 20px 28px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+
+    .logo-text { font-size: 18px; font-weight: 700; }
+    .logo-text span { color: var(--primary-light); }
+
+    .nav { padding: 20px 12px; flex: 1; }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      padding: 0 8px;
+      margin-bottom: 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 14px;
+      transition: all 0.2s;
+      margin-bottom: 2px;
+    }
+
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: rgba(99,102,241,0.15); color: var(--primary-light); }
+
+    .nav-item .icon { font-size: 16px; }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 700;
+    }
+
+    .user-name { font-size: 13px; font-weight: 600; }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+
+    /* Main Content */
+    .main {
+      margin-right: 240px;
+      flex: 1;
+      padding: 32px;
+      overflow-y: auto;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .page-title { font-size: 24px; font-weight: 700; }
+    .page-subtitle { font-size: 14px; color: var(--text-muted); margin-top: 4px; }
+
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+
+    .btn {
+      padding: 9px 18px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover { background: #4f46e5; }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary-light); }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 80px; height: 80px;
+      border-radius: 0 0 0 80px;
+      opacity: 0.08;
+    }
+
+    .stat-card.card-revenue::before { background: var(--primary); }
+    .stat-card.card-orders::before { background: var(--success); }
+    .stat-card.card-users::before { background: var(--warning); }
+    .stat-card.card-conversion::before { background: #ec4899; }
+
+    .stat-icon {
+      font-size: 22px;
+      margin-bottom: 14px;
+      width: 44px; height: 44px;
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .card-revenue .stat-icon { background: rgba(99,102,241,0.15); }
+    .card-orders .stat-icon { background: rgba(34,197,94,0.15); }
+    .card-users .stat-icon { background: rgba(245,158,11,0.15); }
+    .card-conversion .stat-icon { background: rgba(236,72,153,0.15); }
+
+    .stat-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+
+    .stat-value {
+      font-size: 26px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stat-change {
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .stat-change.positive { color: var(--success); }
+    .stat-change.negative { color: var(--danger); }
+
+    /* Charts Row */
+    .charts-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .card-title { font-size: 15px; font-weight: 600; }
+    .card-badge {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(99,102,241,0.15);
+      color: var(--primary-light);
+    }
+
+    /* Bar Chart */
+    .bar-chart {
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      height: 160px;
+      padding-bottom: 30px;
+      position: relative;
+    }
+
+    .bar-chart::after {
+      content: '';
+      position: absolute;
+      bottom: 29px; right: 0; left: 0;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .bar-group {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+
+    .bar {
+      width: 100%;
+      background: linear-gradient(180deg, var(--primary), rgba(99,102,241,0.4));
+      border-radius: 6px 6px 0 0;
+      transition: height 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+      cursor: pointer;
+      position: relative;
+    }
+
+    .bar:hover { background: linear-gradient(180deg, var(--primary-light), var(--primary)); }
+
+    .bar-tooltip {
+      position: absolute;
+      top: -32px;
+      right: 50%;
+      transform: translateX(50%);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      white-space: nowrap;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    .bar:hover .bar-tooltip { opacity: 1; }
+
+    .bar-label {
+      font-size: 11px;
+      color: var(--text-muted);
+      position: absolute;
+      bottom: -22px;
+      white-space: nowrap;
+    }
+
+    /* Donut Chart */
+    .donut-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .donut-svg { transform: rotate(-90deg); }
+
+    .donut-center {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+
+    .donut-container { position: relative; display: inline-block; }
+
+    .donut-number { font-size: 22px; font-weight: 700; }
+    .donut-text { font-size: 11px; color: var(--text-muted); }
+
+    .legend { width: 100%; }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      padding: 4px 0;
+    }
+    .legend-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-left: 6px;
+    }
+    .legend-label { display: flex; align-items: center; color: var(--text-muted); }
+    .legend-value { font-weight: 600; }
+
+    /* Orders Table */
+    .table-wrap { overflow-x: auto; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead th {
+      text-align: right;
+      padding: 10px 14px;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody tr {
+      border-bottom: 1px solid rgba(45,49,72,0.5);
+      transition: background 0.15s;
+    }
+
+    tbody tr:hover { background: var(--surface2); }
+    tbody tr:last-child { border-bottom: none; }
+
+    td { padding: 13px 14px; vertical-align: middle; }
+
+    .customer-cell { display: flex; align-items: center; gap: 10px; }
+
+    .customer-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .status-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .status-completed { background: rgba(34,197,94,0.15); color: var(--success); }
+    .status-pending { background: rgba(245,158,11,0.15); color: var(--warning); }
+    .status-cancelled { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+    .amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* Loading */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 80px;
+      color: var(--text-muted);
+      gap: 8px;
+    }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .charts-row { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 700px) {
+      .sidebar { display: none; }
+      .main { margin-right: 0; padding: 16px; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .date-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      background: var(--surface2);
+      padding: 6px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">📊</div>
+      <div class="logo-text"><span>Tarabeih</span> Analytics</div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-label">תפריט ראשי</div>
+      <div class="nav-item active"><span class="icon">🏠</span> לוח בקרה</div>
+      <div class="nav-item"><span class="icon">🛍️</span> הזמנות</div>
+      <div class="nav-item"><span class="icon">👥</span> לקוחות</div>
+      <div class="nav-item"><span class="icon">📦</span> מוצרים</div>
+      <div class="nav-item"><span class="icon">📈</span> דוחות</div>
+      <br/>
+      <div class="nav-label">הגדרות</div>
+      <div class="nav-item"><span class="icon">⚙️</span> הגדרות</div>
+      <div class="nav-item"><span class="icon">🔔</span> התראות</div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="avatar">מ</div>
+        <div>
+          <div class="user-name">מוחמד טראביה</div>
+          <div class="user-role">מנהל מערכת</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <div class="page-header">
+      <div>
+        <div class="page-title">לוח בקרה</div>
+        <div class="page-subtitle">ברוך הבא! הנה סקירה של הפעילות העסקית שלך</div>
+      </div>
+      <div class="header-actions">
+        <div class="date-text" id="current-date">טוען...</div>
+        <button class="btn btn-outline" onclick="loadDashboard()">🔄 רענן</button>
+        <button class="btn btn-primary">+ הוסף נתון</button>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-grid" id="stats-grid">
+      <div class="loading"><div class="spinner"></div> טוען נתונים...</div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">הכנסות חודשיות</div>
+          <span class="card-badge">2026</span>
+        </div>
+        <div class="bar-chart" id="bar-chart">
+          <div class="loading"><div class="spinner"></div> טוען גרף...</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">סטטוס הזמנות</div>
+        </div>
+        <div class="donut-wrap">
+          <div class="donut-container" id="donut-container">
+            <div class="loading"><div class="spinner"></div></div>
+          </div>
+          <div class="legend" id="donut-legend"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Orders Table -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">הזמנות אחרונות</div>
+        <span class="card-badge" id="orders-count">טוען...</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>לקוח</th>
+              <th>מוצר</th>
+              <th>סכום</th>
+              <th>סטטוס</th>
+              <th>תאריך</th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody">
+            <tr><td colspan="5"><div class="loading"><div class="spinner"></div> טוען הזמנות...</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const SUPABASE_URL = 'https://evelmjmnkcyundlwudko.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV2ZWxtam1ua2N5dW5kbHd1ZGtvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMDQ1NTMsImV4cCI6MjA5NjY4MDU1M30.fDIot1-Kwn8pDfu2gEq3KCEpzByJww7cluwjqetMj3o';
+
+    const { createClient } = supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Date display
+    const dateEl = document.getElementById('current-date');
+    const now = new Date();
+    dateEl.textContent = now.toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    const CARD_CLASSES = { revenue: 'card-revenue', orders: 'card-orders', users: 'card-users', conversion: 'card-conversion' };
+    const CARD_ICONS  = { revenue: '💰', orders: '🛍️', users: '👥', conversion: '📈' };
+    const AVATAR_COLORS = ['#6366f1','#22c55e','#f59e0b','#ec4899','#3b82f6','#a855f7','#14b8a6'];
+
+    function formatValue(name, val) {
+      if (name.includes('הכנסות')) return '₪' + Number(val).toLocaleString('he-IL');
+      if (name.includes('המרה'))   return val + '%';
+      return Number(val).toLocaleString('he-IL');
+    }
+
+    function formatDate(iso) {
+      return new Date(iso).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    }
+
+    async function loadStats() {
+      const { data, error } = await db.from('stats').select('*').order('id');
+      if (error || !data) return;
+
+      const grid = document.getElementById('stats-grid');
+      grid.innerHTML = data.map(s => {
+        const cls   = CARD_CLASSES[s.icon] || '';
+        const icon  = CARD_ICONS[s.icon]  || '📊';
+        const pct   = s.change_percent;
+        const dir   = pct >= 0 ? 'positive' : 'negative';
+        const arrow = pct >= 0 ? '▲' : '▼';
+        return `
+          <div class="stat-card ${cls}">
+            <div class="stat-icon">${icon}</div>
+            <div class="stat-label">${s.name}</div>
+            <div class="stat-value">${formatValue(s.name, s.value)}</div>
+            <div class="stat-change ${dir}">${arrow} ${Math.abs(pct)}% מהחודש שעבר</div>
+          </div>`;
+      }).join('');
+    }
+
+    async function loadBarChart() {
+      const { data, error } = await db.from('monthly_revenue').select('*').order('id');
+      if (error || !data) return;
+
+      const maxRev = Math.max(...data.map(d => d.revenue));
+      const chart = document.getElementById('bar-chart');
+      chart.innerHTML = data.map(d => {
+        const pct = Math.round((d.revenue / maxRev) * 130);
+        return `
+          <div class="bar-group">
+            <div class="bar" style="height:${pct}px">
+              <div class="bar-tooltip">₪${Number(d.revenue).toLocaleString('he-IL')}</div>
+              <div class="bar-label">${d.month}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function loadDonut() {
+      const { data } = await db.from('recent_orders').select('status');
+      if (!data) return;
+
+      const counts = { completed: 0, pending: 0, cancelled: 0 };
+      data.forEach(o => counts[o.status]++);
+      const total = data.length;
+
+      const colors   = ['#6366f1', '#f59e0b', '#ef4444'];
+      const labels   = { completed: 'הושלמו', pending: 'ממתינות', cancelled: 'בוטלו' };
+      const keys     = ['completed', 'pending', 'cancelled'];
+      const r = 50, cx = 60, cy = 60, circ = 2 * Math.PI * r;
+
+      let offset = 0;
+      const segments = keys.map((k, i) => {
+        const frac = counts[k] / total;
+        const dash = frac * circ;
+        const seg  = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${colors[i]}"
+          stroke-width="16" stroke-dasharray="${dash} ${circ - dash}"
+          stroke-dashoffset="${-offset}" stroke-linecap="butt"/>`;
+        offset += dash;
+        return seg;
+      }).join('');
+
+      document.getElementById('donut-container').innerHTML = `
+        <svg class="donut-svg" width="120" height="120" viewBox="0 0 120 120">
+          <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${'#2d3148'}" stroke-width="16"/>
+          ${segments}
+        </svg>
+        <div class="donut-center">
+          <div class="donut-number">${total}</div>
+          <div class="donut-text">הזמנות</div>
+        </div>`;
+
+      document.getElementById('donut-legend').innerHTML = keys.map((k, i) => `
+        <div class="legend-item">
+          <div class="legend-label">
+            <span class="legend-dot" style="background:${colors[i]}"></span>
+            ${labels[k]}
+          </div>
+          <span class="legend-value">${counts[k]}</span>
+        </div>`).join('');
+    }
+
+    async function loadOrders() {
+      const { data, error } = await db.from('recent_orders').select('*').order('created_at', { ascending: false }).limit(7);
+      if (error || !data) return;
+
+      document.getElementById('orders-count').textContent = `${data.length} הזמנות`;
+
+      const STATUS_MAP = {
+        completed: ['status-completed', 'הושלם'],
+        pending:   ['status-pending',   'ממתין'],
+        cancelled: ['status-cancelled', 'בוטל'],
+      };
+
+      document.getElementById('orders-tbody').innerHTML = data.map((o, i) => {
+        const [cls, label] = STATUS_MAP[o.status] || ['', o.status];
+        const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+        const initial = o.customer_name.charAt(0);
+        return `
+          <tr>
+            <td>
+              <div class="customer-cell">
+                <div class="customer-avatar" style="background:${color}20;color:${color}">${initial}</div>
+                ${o.customer_name}
+              </div>
+            </td>
+            <td>${o.product}</td>
+            <td><span class="amount">₪${Number(o.amount).toLocaleString('he-IL')}</span></td>
+            <td><span class="status-badge ${cls}">${label}</span></td>
+            <td style="color:var(--text-muted)">${formatDate(o.created_at)}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function loadDashboard() {
+      await Promise.all([loadStats(), loadBarChart(), loadDonut(), loadOrders()]);
+    }
+
+    loadDashboard();
+  </script>
+</body>
+</html>
