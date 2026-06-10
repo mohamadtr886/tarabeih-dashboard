@@ -1,0 +1,10 @@
+{
+  "name": "tarabeih-dashboard-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "serve -s . -l ${PORT:-80}"
+  },
+  "dependencies": {
+    "serve": "^14.2.4"
+  }
+}
